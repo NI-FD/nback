@@ -25,26 +25,27 @@ function nback(){
 
     this.lock_timestamp = true;
     this.pre_timestamp = new Date();
-    this.arr_timestamp = [];
+    this.time = [];
     this.score_per = 0;
-
-    this.id_MTIDorUser = "null";
+    this.timedelta = 0;
+    this.id_MTIDorUser = "";
     this.id_MTIDorUser = getQueryVariable("userID");
-
-    this.getID = function(){
-
+    console.log(this.id_MTIDorUser);
+    if (!this.id_MTIDorUser) {
+      alert("Need Worker ID");
     }
+
     this.refreshLog = function(){
       this.lock_timestamp = true;
-      this.arr_timestamp = [];
+      this.time = [];
       this.score_per = 0;
+      this.data_point = {};
     }
     this.sendResult = function() {
-
         var user = firebase.auth().currentUser;
         var dbRef = firebase.database().ref('users/'+this.id_MTIDorUser+'/'+ new Date());
 
-        data = {"uid":user.uid,"time":this.arr_timestamp,"accuracy":this.score_per};
+        data = {"uid":user.uid,"time":this.time,"accuracy":this.score_per};
         dbRef.update(data);
         console.log("Sent data to database: " + data);
     }
@@ -52,7 +53,9 @@ function nback(){
     this.get_timedelta = function(){
       if (!this.lock_timestamp) {
         delta = new Date() - this.pre_timestamp
-        this.arr_timestamp.push(delta);
+        this.timedelta = delta;
+        console.log("get_timedelta");
+        console.log(delta);
         this.lock_timestamp = true;
         return delta;
       }
@@ -154,8 +157,8 @@ function nback(){
             this.count_game++;
             this.add_scoreboard();
             this.sendResult();
-            console.log(this.arr_timestamp);
-            alert(this.arr_timestamp);
+            console.log(this.time);
+            // alert(this.time);
             $("#pressSpace").html('Press SPACE to start a new session');
         }
 
@@ -181,6 +184,18 @@ function nback(){
             if (this.pressed_a && this.is_pos_thesame()){
                 //Pressed A correctly
                 this.score++;
+                this.time.push({
+                    "time": this.timedelta,
+                    "cat": "pos",
+                    "correct": true
+                });
+            } else if (this.pressed_a && !this.is_pos_thesame()) {
+                //Pressed A wrong
+                this.time.push({
+                    "time": this.timedelta,
+                    "cat": "pos",
+                    "correct": false
+                });
             } else if (!this.pressed_a && !this.is_pos_thesame()){
                 //Skipped A correctly
                 this.score++;
@@ -188,6 +203,18 @@ function nback(){
             if (this.pressed_l && this.is_letter_thesame()){
                 //Pressed L correctly
                 this.score++;
+                this.time.push({
+                    "time": this.timedelta,
+                    "cat": "aud",
+                    "correct": true
+                });
+            } else if (this.pressed_l && this.is_letter_thesame()){
+                //Pressed L wrong
+                this.time.push({
+                    "time": this.timedelta,
+                    "cat": "aud",
+                    "correct": false
+                });
             } else if (!this.pressed_l && !this.is_letter_thesame()){
                 //Skipped L correctly
                 this.score++;
@@ -201,8 +228,8 @@ function nback(){
     */
     this.draw_square = function (pos){
         var canvas = $("#gameCanvas");
-        var margin = 18;
-        var square_width = Math.floor(canvas.width()/3 - margin*2);
+        var margin = 1;
+        var square_width = Math.floor((canvas.width()-4)/3 - margin*2)+2;
         var ctx = canvas[0].getContext("2d");
         var img = $("#imgSquare");
         //Calculate position based on pos number 1 - 9
@@ -216,8 +243,8 @@ function nback(){
     */
     this.hide_square = function (pos){
         var canvas = $("#gameCanvas");
-        var margin = 10;
-        var square_width = Math.floor(canvas.width()/3 - margin*2);
+        var margin = 1;
+        var square_width = Math.floor((canvas.width()-4)/3 - margin*2)+2;
         var ctx = canvas[0].getContext("2d");
         var ypos = Math.floor((pos - 1)/3) * (square_width + 2*margin);
         var xpos = ((pos-1) % 3) * (square_width + 2*margin);
@@ -236,13 +263,15 @@ function nback(){
     */
     this.draw_background = function (){
         var canvas = $("#gameCanvas");
-        var line_width = 1;
-        var space_width = Math.floor((canvas.width() - 2 * line_width)/3);
+        var line_width = 2;
+        var space_width = Math.floor((canvas.width() - 2 * line_width)/3)+line_width;
         var ctx = $(canvas)[0].getContext('2d');
         //ctx.fillStyle = "rgb(0,0,0)";
         //ctx.fillRect(space_width, 0, line_width, canvas.height());
+        ctx.strokeStyle = "rgb(25,25,25)";
         ctx.lineWidth = line_width;
         ctx.beginPath();
+
         //Vertical lines
         ctx.moveTo(space_width, 0);
         ctx.lineTo(space_width, canvas.height());
@@ -292,8 +321,8 @@ function nback(){
     * Reset indicator color
     */
     this.reset_color = function(){
-        $("#pressA").css('color','black');
-        $("#pressL").css('color','black');
+        $("#pressA").css('background-color','rgb(226,226,226)');
+        $("#pressL").css('background-color','rgb(226,226,226)');
         this.pressed_a = false;
         this.pressed_l = false;
     }
@@ -334,30 +363,30 @@ $(function(){
                 nb.start_game();
             }
         }
-        if (nb.answer_allowed && (e.which == 65 || e.which == 76)) {
+        if (nb.answer_allowed && (e.which == 37 || e.which == 39)) {
           console.log(nb.get_timedelta());
-          if (nb.answer_allowed && e.which == 65){
+          if (nb.answer_allowed && e.which == 37){
               if (!nb.pressed_a){
                   //A key
                   if (nb.is_pos_thesame()){
-                      if (nb.show_indicator) $("#pressA").css('color','green');
+                      if (nb.show_indicator) $("#pressA").css('background-color','rgb(133,210,166)');
                   }
                   else
                       {
-                      if (nb.show_indicator) $("#pressA").css('color','red');
+                      if (nb.show_indicator) $("#pressA").css('background-color','rgb(233,159,159)');
                   }
                   nb.pressed_a = true;
               }
           }
-          if (nb.answer_allowed && e.which == 76){
+          if (nb.answer_allowed && e.which == 39){
               if (!nb.pressed_l){
                   //L key
                   if (nb.is_letter_thesame()){
-                      if (nb.show_indicator) $("#pressL").css('color','green');
+                      if (nb.show_indicator) $("#pressL").css('background-color','rgb(133,210,166)');
                   }
                   else
                       {
-                      if (nb.show_indicator) $("#pressL").css('color','red');
+                      if (nb.show_indicator) $("#pressL").css('background-color','rgb(233,159,159)');
                   }
                   nb.pressed_l = true;
               }
